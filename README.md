@@ -33,8 +33,8 @@
 
 ### 1. 克隆项目
 ```bash
-git clone https://github.com/your-username/photo-gallery-system.git
-cd photo-gallery-system
+git clone https://github.com/nzlboss/Album-Management-System.git
+cd Album-Management-System
 ```
 
 ### 2. 安装依赖（PHP 库）
