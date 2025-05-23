@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的相册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#8B5CF6',
+                        dark: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .transition-all-300 {
+                transition: all 0.3s ease;
+            }
+            .scale-hover {
+                @apply hover:scale-105 transition-all duration-300;
+            }
+            .card-shadow {
+                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- 导航栏 -->
+    <nav class="bg-white shadow-md fixed w-full top-0 z-50 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-primary text-2xl font-bold">相册管理系统</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="galleryBtn" class="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100 transition-all duration-200">
+                        <i class="fa fa-th-large mr-1"></i> 相册
+                    </button>
+                    <button id="uploadBtn" class="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary/90 transition-all duration-200">
+                        <i class="fa fa-upload mr-1"></i> 上传
+                    </button>
+                    <button id="logoutBtn" class="px-4 py-2 rounded-md text-gray-700 hover:bg-gray-100 transition-all duration-200">
+                        <i class="fa fa-sign-out mr-1"></i> 退出
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="pt-20 pb-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <!-- 授权区域 -->
+        <section id="permissionSection" class="min-h-[70vh] flex flex-col items-center justify-center text-center p-8">
+            <div class="bg-white rounded-xl p-8 shadow-xl max-w-md mx-auto card-shadow">
+                <div class="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="fa fa-images text-3xl text-primary"></i>
+                </div>
+                <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800 mb-4">访问您的相册</h2>
+                <p class="text-gray-600 mb-6">我们需要您的授权来访问相册中的图片和视频。此操作不会上传任何文件，除非您主动选择。</p>
+                <button id="requestPermissionBtn" class="px-8 py-3 bg-primary text-white rounded-lg shadow-lg hover:shadow-xl hover:bg-primary/90 transition-all duration-300 scale-hover">
+                    <i class="fa fa-unlock-alt mr-2"></i> 授权访问相册
+                </button>
+            </div>
+        </section>
+
+        <!-- 相册浏览区域 (默认隐藏) -->
+        <section id="gallerySection" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">我的相册</h2>
+                <div class="flex space-x-2">
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="搜索媒体..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                        <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    <select id="filterSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all">
+                        <option value="all">全部</option>
+                        <option value="image">图片</option>
+                        <option value="video">视频</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 媒体网格 -->
+            <div id="mediaGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                <!-- 媒体项将通过JavaScript动态添加 -->
+            </div>
+
+            <!-- 加载更多 -->
+            <div class="text-center mt-10">
+                <button id="loadMoreBtn" class="px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                    加载更多 <i class="fa fa-angle-down ml-1"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- 上传区域 (默认隐藏) -->
+        <section id="uploadSection" class="hidden">
+            <div class="bg-white rounded-xl p-8 shadow-xl mb-8 card-shadow">
+                <h2 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800 mb-6">上传媒体</h2>
+                
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-10 text-center mb-6 hover:border-primary transition-all duration-300 cursor-pointer">
+                    <i class="fa fa-cloud-upload text-4xl text-gray-400 mb-4"></i>
+                    <p class="text-gray-500 mb-2">拖放文件到这里，或</p>
+                    <button id="selectFilesBtn" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200">
+                        选择文件
+                    </button>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*,video/*" multiple>
+                    <p class="text-xs text-gray-400 mt-4">支持 JPG, PNG, GIF, MP4, WebM 格式</p>
+                </div>
+
+                <div id="previewContainer" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-6 hidden">
+                    <!-- 预览图将通过JavaScript动态添加 -->
+                </div>
+
+                <button id="startUploadBtn" class="px-8 py-3 bg-secondary text-white rounded-lg shadow-md hover:shadow-lg hover:bg-secondary/90 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <i class="fa fa-paper-plane mr-2"></i> 开始上传
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- 媒体查看模态框 -->
+    <div id="mediaModal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-hidden relative">
+            <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-500 hover:text-gray-700 z-10">
+                <i class="fa fa-times text-xl"></i>
+            </button>
+            <div class="p-6">
+                <div id="modalContent" class="flex flex-col md:flex-row gap-6">
+                    <div class="md:w-2/3">
+                        <div id="modalMedia" class="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                            <!-- 媒体内容将通过JavaScript动态添加 -->
+                        </div>
+                    </div>
+                    <div class="md:w-1/3">
+                        <h3 id="modalTitle" class="text-xl font-bold text-gray-800 mb-2"></h3>
+                        <p id="modalDescription" class="text-gray-600 mb-4"></p>
+                        <div class="space-y-3">
+                            <div class="flex items-center">
+                                <i class="fa fa-calendar text-gray-400 w-6"></i>
+                                <span id="modalDate" class="text-gray-600"></span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa fa-file text-gray-400 w-6"></i>
+                                <span id="modalType" class="text-gray-600"></span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa fa-size text-gray-400 w-6"></i>
+                                <span id="modalSize" class="text-gray-600"></span>
+                            </div>
+                        </div>
+                        <div class="mt-6 flex space-x-3">
+                            <button class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-all duration-200">
+                                <i class="fa fa-download mr-1"></i> 下载
+                            </button>
+                            <button class="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200">
+                                <i class="fa fa-trash mr-1"></i> 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载指示器 -->
+    <div id="loadingIndicator" class="fixed inset-0 bg-black/20 z-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl flex items-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mr-4"></div>
+            <span class="text-gray-700">处理中，请稍候...</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM 元素
+            const permissionSection = document.getElementById('permissionSection');
+            const gallerySection = document.getElementById('gallerySection');
+            const uploadSection = document.getElementById('uploadSection');
+            const requestPermissionBtn = document.getElementById('requestPermissionBtn');
+            const galleryBtn = document.getElementById('galleryBtn');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const fileInput = document.getElementById('fileInput');
+            const selectFilesBtn = document.getElementById('selectFilesBtn');
+            const dropZone = document.getElementById('dropZone');
+            const previewContainer = document.getElementById('previewContainer');
+            const startUploadBtn = document.getElementById('startUploadBtn');
+            const mediaGrid = document.getElementById('mediaGrid');
+            const mediaModal = document.getElementById('mediaModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const modalMedia = document.getElementById('modalMedia');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalDescription = document.getElementById('modalDescription');
+            const modalDate = document.getElementById('modalDate');
+            const modalType = document.getElementById('modalType');
+            const modalSize = document.getElementById('modalSize');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const searchInput = document.getElementById('searchInput');
+            const filterSelect = document.getElementById('filterSelect');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const navbar = document.getElementById('navbar');
+
+            // 存储选中的文件和媒体数据
+            let selectedFiles = [];
+            let allMediaItems = [];
+            let currentPage = 1;
+            const itemsPerPage = 12;
+
+            // 导航栏滚动效果
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 10) {
+                    navbar.classList.add('shadow-lg');
+                    navbar.classList.remove('shadow-md');
+                } else {
+                    navbar.classList.remove('shadow-lg');
+                    navbar.classList.add('shadow-md');
+                }
+            });
+
+            // 请求相册访问权限
+            requestPermissionBtn.addEventListener('click', async function() {
+                try {
+                    // 检查浏览器是否支持 File System Access API
+                    if (!window.showOpenFilePicker) {
+                        alert('您的浏览器不支持此功能，请使用 Chrome 或 Edge 浏览器。');
+                        return;
+                    }
+
+                    showLoading();
+                    
+                    // 打开文件选择器（用户可以选择多个图片或视频）
+                    const fileHandles = await window.showOpenFilePicker({
+                        types: [
+                            {
+                                description: '图片和视频',
+                                accept: {
+                                    'image/*': ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+                                    'video/*': ['.mp4', '.webm', '.mov']
+                                }
+                            }
+                        ],
+                        multiple: true
+                    });
+
+                    hideLoading();
+                    
+                    // 处理选中的文件
+                    if (fileHandles.length > 0) {
+                        permissionSection.classList.add('hidden');
+                        gallerySection.classList.remove('hidden');
+                        
+                        // 读取文件元数据
+                        allMediaItems = [];
+                        for (const handle of fileHandles) {
+                            const file = await handle.getFile();
+                            allMediaItems.push({
+                                id: allMediaItems.length + 1,
+                                name: file.name,
+                                type: file.type,
+                                size: formatFileSize(file.size),
+                                lastModified: new Date(file.lastModified).toLocaleDateString(),
+                                file: file,
+                                handle: handle
+                            });
+                        }
+                        
+                        // 显示媒体
+                        renderMediaGrid(allMediaItems.slice(0, itemsPerPage));
+                    }
+                } catch (error) {
+                    hideLoading();
+                    console.error('访问相册失败:', error);
+                    if (error.name !== 'AbortError') {
+                        alert('访问相册失败: ' + error.message);
+                    }
+                }
+            });
+
+            // 切换到相册视图
+            galleryBtn.addEventListener('click', function() {
+                gallerySection.classList.remove('hidden');
+                uploadSection.classList.add('hidden');
+                permissionSection.classList.add('hidden');
+            });
+
+            // 切换到上传视图
+            uploadBtn.addEventListener('click', function() {
+                gallerySection.classList.add('hidden');
+                uploadSection.classList.remove('hidden');
+                permissionSection.classList.add('hidden');
+            });
+
+            // 选择文件按钮
+            selectFilesBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // 文件选择处理
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    selectedFiles = Array.from(e.target.files);
+                    renderPreviews(selectedFiles);
+                    startUploadBtn.disabled = false;
+                }
+            });
+
+            // 拖放处理
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, highlight, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, unhighlight, false);
+            });
+
+            function highlight() {
+                dropZone.classList.add('border-primary');
+                dropZone.classList.add('bg-primary/5');
+            }
+
+            function unhighlight() {
+                dropZone.classList.remove('border-primary');
+                dropZone.classList.remove('bg-primary/5');
+            }
+
+            dropZone.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = Array.from(dt.files);
+                
+                if (files.length > 0) {
+                    selectedFiles = files;
+                    renderPreviews(selectedFiles);
+                    startUploadBtn.disabled = false;
+                }
+            }
+
+            // 渲染预览图
+            function renderPreviews(files) {
+                previewContainer.innerHTML = '';
+                previewContainer.classList.remove('hidden');
+                
+                files.forEach((file, index) => {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'relative group';
+                    
+                    if (file.type.startsWith('image/')) {
+                        const img = document.createElement('img');
+                        img.src = URL.createObjectURL(file);
+                        img.className = 'w-full h-24 object-cover rounded-lg';
+                        img.alt = file.name;
+                        previewItem.appendChild(img);
+                    } else if (file.type.startsWith('video/')) {
+                        const video = document.createElement('video');
+                        video.src = URL.createObjectURL(file);
+                        video.className = 'w-full h-24 object-cover rounded-lg';
+                        video.controls = false;
+                        video.muted = true;
+                        video.preload = 'metadata';
+                        previewItem.appendChild(video);
+                        
+                        // 添加视频图标覆盖层
+                        const overlay = document.createElement('div');
+                        overlay.className = 'absolute inset-0 flex items-center justify-center bg-black/30 rounded-lg';
+                        const icon = document.createElement('i');
+                        icon.className = 'fa fa-play text-white text-2xl';
+                        overlay.appendChild(icon);
+                        previewItem.appendChild(overlay);
+                    }
+                    
+                    // 添加删除按钮
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity';
+                    removeBtn.innerHTML = '<i class="fa fa-times text-xs"></i>';
+                    removeBtn.onclick = function() {
+                        selectedFiles.splice(index, 1);
+                        renderPreviews(selectedFiles);
+                        if (selectedFiles.length === 0) {
+                            startUploadBtn.disabled = true;
+                            previewContainer.classList.add('hidden');
+                        }
+                    };
+                    previewItem.appendChild(removeBtn);
+                    
+                    previewContainer.appendChild(previewItem);
+                });
+            }
+
+            // 开始上传
+            startUploadBtn.addEventListener('click', async function() {
+                if (selectedFiles.length === 0) return;
+                
+                showLoading();
+                
+                try {
+                    // 模拟上传进度
+                    let progress = 0;
+                    const interval = setInterval(() => {
+                        progress += 5;
+                        if (progress >= 100) {
+                            clearInterval(interval);
+                        }
+                    }, 100);
+                    
+                    // 实际应用中，这里应该发送文件到服务器
+                    // 例如使用 FormData 和 fetch API
+                    
+                    // 模拟上传完成
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    hideLoading();
+                    alert('上传成功！');
+                    
+                    // 重置上传区域
+                    selectedFiles = [];
+                    renderPreviews([]);
+                    previewContainer.classList.add('hidden');
+                    startUploadBtn.disabled = true;
+                    
+                    // 更新相册视图
+                    gallerySection.classList.remove('hidden');
+                    uploadSection.classList.add('hidden');
+                    
+                } catch (error) {
+                    hideLoading();
+                    alert('上传失败: ' + error.message);
+                }
+            });
+
+            // 渲染媒体网格
+            function renderMediaGrid(mediaItems) {
+                mediaGrid.innerHTML = '';
+                
+                if (mediaItems.length === 0) {
+                    mediaGrid.innerHTML = `
+                        <div class="col-span-full text-center py-12">
+                            <i class="fa fa-folder-open-o text-5xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">没有找到媒体文件</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                mediaItems.forEach(item => {
+                    const mediaItem = document.createElement('div');
+                    mediaItem.className = 'bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 scale-hover';
+                    
+                    if (item.type.startsWith('image/')) {
+                        // 图片项
+                        mediaItem.innerHTML = `
+                            <div class="aspect-square overflow-hidden">
+                                <img src="${URL.createObjectURL(item.file)}" alt="${item.name}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-gray-800 truncate">${item.name}</h3>
+                                <p class="text-sm text-gray-500 mt-1">${item.lastModified}</p>
+                            </div>
+                        `;
+                    } else if (item.type.startsWith('video/')) {
+                        // 视频项
+                        mediaItem.innerHTML = `
+                            <div class="aspect-square overflow-hidden relative bg-black">
+                                <video src="${URL.createObjectURL(item.file)}" class="w-full h-full object-cover" muted preload="metadata"></video>
+                                <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                                    <i class="fa fa-play-circle text-white text-4xl opacity-80 hover:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-gray-800 truncate">${item.name}</h3>
+                                <p class="text-sm text-gray-500 mt-1">${item.lastModified} • ${item.size}</p>
+                            </div>
+                        `;
+                    }
+                    
+                    // 点击查看详情
+                    mediaItem.addEventListener('click', function() {
+                        openMediaModal(item);
+                    });
+                    
+                    mediaGrid.appendChild(mediaItem);
+                });
+            }
+
+            // 打开媒体详情模态框
+            function openMediaModal(item) {
+                modalTitle.textContent = item.name;
+                modalDescription.textContent = ''; // 实际应用中可以从数据库获取描述
+                modalDate.textContent = item.lastModified;
+                modalType.textContent = item.type;
+                modalSize.textContent = item.size;
+                
+                modalMedia.innerHTML = '';
+                
+                if (item.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.src = URL.createObjectURL(item.file);
+                    img.className = 'w-full h-full object-contain';
+                    img.alt = item.name;
+                    modalMedia.appendChild(img);
+                } else if (item.type.startsWith('video/')) {
+                    const video = document.createElement('video');
+                    video.src = URL.createObjectURL(item.file);
+                    video.className = 'w-full h-full object-contain';
+                    video.controls = true;
+                    video.autoplay = true;
+                    modalMedia.appendChild(video);
+                }
+                
+                mediaModal.classList.remove('hidden');
+                // 添加淡入动画
+                setTimeout(() => {
+                    mediaModal.classList.add('opacity-100');
+                }, 10);
+                
+                // 阻止背景滚动
+                document.body.style.overflow = 'hidden';
+            }
+
+            // 关闭模态框
+            closeModalBtn.addEventListener('click', function() {
+                // 添加淡出动画
+                mediaModal.classList.remove('opacity-100');
+                setTimeout(() => {
+                    mediaModal.classList.add('hidden');
+                    // 恢复背景滚动
+                    document.body.style.overflow = '';
+                    
+                    // 停止所有视频
+                    const videos = modalMedia.querySelectorAll('video');
+                    videos.forEach(video => {
+                        video.pause();
+                    });
+                }, 300);
+            });
+
+            // 搜索和过滤
+            function filterMedia() {
+                const searchTerm = searchInput.value.toLowerCase();
+                const filterType = filterSelect.value;
+                
+                const filteredItems = allMediaItems.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchTerm);
+                    const matchesType = filterType === 'all' || 
+                                       (filterType === 'image' && item.type.startsWith('image/')) || 
+                                       (filterType === 'video' && item.type.startsWith('video/'));
+                    
+                    return matchesSearch && matchesType;
+                });
+                
+                currentPage = 1;
+                renderMediaGrid(filteredItems.slice(0, itemsPerPage));
+                
+                // 更新加载更多按钮状态
+                loadMoreBtn.disabled = filteredItems.length <= itemsPerPage;
+            }
+
+            searchInput.addEventListener('input', filterMedia);
+            filterSelect.addEventListener('change', filterMedia);
+
+            // 加载更多
+            loadMoreBtn.addEventListener('click', function() {
+                currentPage++;
+                const startIndex = currentPage * itemsPerPage;
+                const endIndex = startIndex + itemsPerPage;
+                
+                const searchTerm = searchInput.value.toLowerCase();
+                const filterType = filterSelect.value;
+                
+                const filteredItems = allMediaItems.filter(item => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchTerm);
+                    const matchesType = filterType === 'all' || 
+                                       (filterType === 'image' && item.type.startsWith('image/')) || 
+                                       (filterType === 'video' && item.type.startsWith('video/'));
+                    
+                    return matchesSearch && matchesType;
+                });
+                
+                const newItems = filteredItems.slice(startIndex, endIndex);
+                if (newItems.length > 0) {
+                    // 创建一个文档片段，减少DOM操作
+                    const fragment = document.createDocumentFragment();
+                    
+                    newItems.forEach(item => {
+                        const mediaItem = document.createElement('div');
+                        mediaItem.className = 'bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 scale-hover';
+                        
+                        if (item.type.startsWith('image/')) {
+                            mediaItem.innerHTML = `
+                                <div class="aspect-square overflow-hidden">
+                                    <img src="${URL.createObjectURL(item.file)}" alt="${item.name}" class="w-full h-full object-cover transition-transform duration-500 hover:scale-110">
+                                </div>
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-gray-800 truncate">${item.name}</h3>
+                                    <p class="text-sm text-gray-500 mt-1">${item.lastModified}</p>
+                                </div>
+                            `;
+                        } else if (item.type.startsWith('video/')) {
+                            mediaItem.innerHTML = `
+                                <div class="aspect-square overflow-hidden relative bg-black">
+                                    <video src="${URL.createObjectURL(item.file)}" class="w-full h-full object-cover" muted preload="metadata"></video>
+                                    <div class="absolute inset-0 flex items-center justify-center bg-black/20">
+                                        <i class="fa fa-play-circle text-white text-4xl opacity-80 hover:opacity-100 transition-opacity"></i>
+                                    </div>
+                                </div>
+                                <div class="p-4">
+                                    <h3 class="font-semibold text-gray-800 truncate">${item.name}</h3>
+                                    <p class="text-sm text-gray-500 mt-1">${item.lastModified} • ${item.size}</p>
+                                </div>
+                            `;
+                        }
+                        
+                        mediaItem.addEventListener('click', function() {
+                            openMediaModal(item);
+                        });
+                        
+                        fragment.appendChild(mediaItem);
+                    });
+                    
+                    mediaGrid.appendChild(fragment);
+                }
+                
+                // 更新加载更多按钮状态
+                loadMoreBtn.disabled = startIndex + newItems.length >= filteredItems.length;
+            });
+
+            // 退出登录
+            logoutBtn.addEventListener('click', function() {
+                if (confirm('确定要退出吗？')) {
+                    // 清除本地存储的认证信息
+                    localStorage.removeItem('auth_token');
+                    
+                    // 重置应用状态
+                    allMediaItems = [];
+                    currentPage = 1;
+                    
+                    // 显示授权页面
+                    gallerySection.classList.add('hidden');
+                    uploadSection.classList.add('hidden');
+                    permissionSection.classList.remove('hidden');
+                }
+            });
+
+            // 显示/隐藏加载指示器
+            function showLoading() {
+                loadingIndicator.classList.remove('hidden');
+            }
+
+            function hideLoading() {
+                loadingIndicator.classList.add('hidden');
+            }
+
+            // 格式化文件大小
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        });
+    </script>
+</body>
+</html>  
